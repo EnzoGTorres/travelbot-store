@@ -1,5 +1,5 @@
-import axios from "axios";
 import { config } from "./config";
+import { HttpRequestError, requestJson } from "./http";
 import {
   BestFlightPrice,
   DEFAULT_AIRLINE_LABEL,
@@ -297,30 +297,33 @@ async function fetchCombinationPrice(
   notes: string[];
 }> {
   try {
-    const response = await axios.get<SerpApiFlightsResponse>(config.serpApi.baseUrl, {
-      timeout: config.serpApi.requestTimeoutMs,
-      params: {
-        engine: "google_flights",
-        api_key: config.serpApi.getApiKey(),
-        departure_id: params.origin,
-        arrival_id: params.destination,
-        outbound_date: params.departureDate,
-        return_date: params.returnDate,
-        adults: params.adults,
-        currency: params.currency,
-        hl: params.language,
-        gl: params.market,
-        type: params.returnDate ? 1 : 2
-      }
+    const url = new URL(config.serpApi.baseUrl);
+    url.searchParams.set("engine", "google_flights");
+    url.searchParams.set("api_key", config.serpApi.getApiKey());
+    url.searchParams.set("departure_id", params.origin);
+    url.searchParams.set("arrival_id", params.destination);
+    url.searchParams.set("outbound_date", params.departureDate);
+    url.searchParams.set("adults", String(params.adults));
+    url.searchParams.set("currency", params.currency);
+    url.searchParams.set("hl", params.language);
+    url.searchParams.set("gl", params.market);
+    url.searchParams.set("type", params.returnDate ? "1" : "2");
+
+    if (params.returnDate) {
+      url.searchParams.set("return_date", params.returnDate);
+    }
+
+    const response = await requestJson<SerpApiFlightsResponse>(url, {
+      timeoutMs: config.serpApi.requestTimeoutMs
     });
 
-    if (response.data.error) {
-      throw new Error(`SerpAPI devolvio un error: ${response.data.error}`);
+    if (response.error) {
+      throw new Error(`SerpAPI devolvio un error: ${response.error}`);
     }
 
     const rawFlights = [
-      ...(response.data.best_flights ?? []),
-      ...(response.data.other_flights ?? [])
+      ...(response.best_flights ?? []),
+      ...(response.other_flights ?? [])
     ];
 
     let candidateFlights = rawFlights;
@@ -366,7 +369,7 @@ async function fetchCombinationPrice(
     );
 
     const baseInsightPrice = !params.directOnly || directOnlyApplied
-      ? response.data.price_insights?.lowest_price
+      ? response.price_insights?.lowest_price
       : undefined;
     const lowestFlightPrice = bestFlightOption
       ? normalizePrice(bestFlightOption.price)
@@ -378,20 +381,17 @@ async function fetchCombinationPrice(
 
     return {
       price: lowestFlightPrice,
-      currency: response.data.search_parameters?.currency ?? params.currency,
+      currency: response.search_parameters?.currency ?? params.currency,
       airline: buildAirlineLabel(bestFlightOption),
       directOnlyApplied,
       notes
     };
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status;
-      const detail =
-        typeof error.response?.data === "object" && error.response?.data !== null
-          ? JSON.stringify(error.response.data)
-          : undefined;
+    if (error instanceof HttpRequestError) {
+      const status = error.status;
+      const detail = error.detail;
 
-      if (error.code === "ECONNABORTED") {
+      if (error.message === `La solicitud excedio el timeout de ${config.serpApi.requestTimeoutMs}ms.`) {
         throw new Error(
           `SerpAPI excedio el timeout de ${config.serpApi.requestTimeoutMs}ms para esta combinacion.`
         );

@@ -1,7 +1,7 @@
-import axios, { AxiosError } from "axios";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { config } from "./config";
+import { HttpRequestError, requestJson } from "./http";
 import {
   AlertsStore,
   BestFlightPrice,
@@ -334,7 +334,7 @@ function getGithubStoreLabelFromConfig(): string {
 }
 
 function extractGithubErrorInfo(error: unknown, fallbackMessage: string): GithubErrorInfo {
-  if (!axios.isAxiosError(error)) {
+  if (!(error instanceof HttpRequestError)) {
     if (error instanceof Error) {
       return { message: error.message };
     }
@@ -342,18 +342,9 @@ function extractGithubErrorInfo(error: unknown, fallbackMessage: string): Github
     return { message: fallbackMessage };
   }
 
-  const status = error.response?.status;
-  const data = error.response?.data;
-  const message =
-    typeof data === "object" && data !== null && "message" in data && typeof data.message === "string"
-      ? data.message
-      : error.message || fallbackMessage;
-  const detail =
-    typeof data === "string"
-      ? data
-      : typeof data === "object" && data !== null
-        ? JSON.stringify(data)
-        : undefined;
+  const status = error.status;
+  const message = error.message || fallbackMessage;
+  const detail = error.detail;
 
   return {
     status,
@@ -457,13 +448,14 @@ async function readGithubStoreFile(
   const allowMissing = options?.allowMissing ?? true;
 
   try {
-    const response = await axios.get<GithubContentResponse>(getGithubContentsUrl(), {
-      headers: getGithubHeaders(),
-      params: { ref: githubConfig.branch }
+    const url = new URL(getGithubContentsUrl());
+    url.searchParams.set("ref", githubConfig.branch);
+    const response = await requestJson<GithubContentResponse>(url, {
+      headers: getGithubHeaders()
     });
-    const encodedContent = response.data.content?.replace(/\n/g, "");
+    const encodedContent = response.content?.replace(/\n/g, "");
 
-    if (!encodedContent || response.data.encoding !== "base64") {
+    if (!encodedContent || response.encoding !== "base64") {
       throw new Error("GitHub devolvio un contenido invalido para el store JSON.");
     }
 
@@ -472,11 +464,11 @@ async function readGithubStoreFile(
 
     return {
       store: normalizeStore(parsedContent),
-      sha: response.data.sha,
+      sha: response.sha,
       rawContent: decodedContent
     };
   } catch (error: unknown) {
-    if (allowMissing && axios.isAxiosError(error) && error.response?.status === 404) {
+    if (allowMissing && error instanceof HttpRequestError && error.status === 404) {
       console.warn("Store GitHub no existe todavia. Se usara un store inicial en memoria.");
       return { store: createInitialStore() };
     }
@@ -492,20 +484,16 @@ async function putGithubStoreFileContent(
 ): Promise<GithubContentWriteResponse> {
   const githubConfig = getGithubStoreConfig();
 
-  return (
-    await axios.put<GithubContentWriteResponse>(
-      getGithubContentsUrl(),
-      {
-        message,
-        content: Buffer.from(contentText, "utf-8").toString("base64"),
-        branch: githubConfig.branch,
-        sha
-      },
-      {
-        headers: getGithubHeaders()
-      }
-    )
-  ).data;
+  return requestJson<GithubContentWriteResponse>(getGithubContentsUrl(), {
+    method: "PUT",
+    headers: getGithubHeaders(),
+    body: {
+      message,
+      content: Buffer.from(contentText, "utf-8").toString("base64"),
+      branch: githubConfig.branch,
+      sha
+    }
+  });
 }
 
 async function writeGithubStoreFile(
@@ -534,8 +522,8 @@ async function writeGithubStoreFile(
         retried
       };
     } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        const status = error.response?.status;
+      if (error instanceof HttpRequestError) {
+        const status = error.status;
 
         if (attempt === 1 && isRecoverableGithubConflictStatus(status)) {
           retried = true;
@@ -557,11 +545,9 @@ async function writeGithubStoreFile(
 }
 
 async function readGithubRepository(): Promise<GithubRepositoryResponse> {
-  const response = await axios.get<GithubRepositoryResponse>(getGithubRepoUrl(), {
+  return requestJson<GithubRepositoryResponse>(getGithubRepoUrl(), {
     headers: getGithubHeaders()
   });
-
-  return response.data;
 }
 
 function parseGithubStoreJsonDocument(rawContent: string): Record<string, unknown> {
@@ -786,7 +772,7 @@ export async function runGitHubStoreIntegrationTest(
   } catch (error: unknown) {
     if (error instanceof SyntaxError) {
       console.error(`[GitHub Store] Error de parseo JSON: ${error.message}`);
-    } else if (axios.isAxiosError(error)) {
+    } else if (error instanceof HttpRequestError) {
       logGithubDiagnosticError("file_read", "No se pudo releer el archivo para verificar", error);
     } else {
       const message =
