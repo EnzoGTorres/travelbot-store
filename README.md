@@ -172,9 +172,12 @@ Respuesta esperada:
 
 ## Deploy en Vercel
 
+Este proyecto se despliega como backend serverless en Vercel. La ruta `api/check.ts` se publica como Function y no necesita carpeta `public` ni `outputDirectory`.
+
 1. Sube el repo a GitHub.
 2. Importa el proyecto en Vercel.
-3. Configura estas env vars en Vercel:
+3. En Vercel, usa framework preset `Other` y deja vacio `Output Directory` si estaba configurado.
+4. Configura estas env vars en Vercel:
    - `SERPAPI_KEY`
    - `SERPAPI_CURRENCY`
    - `SERPAPI_LANGUAGE`
@@ -188,9 +191,9 @@ Respuesta esperada:
    - `GITHUB_STORE_BRANCH`
    - `GITHUB_STORE_PATH`
    - `GITHUB_STORE_TOKEN`
-4. Asegurate de que el token tenga permiso para leer y escribir contenidos del repo.
-5. Deploya.
-6. Prueba el endpoint:
+5. Asegurate de que el token tenga permiso para leer y escribir contenidos del repo.
+6. Deploya.
+7. Prueba el endpoint:
 
 ```bash
 curl -X POST \
