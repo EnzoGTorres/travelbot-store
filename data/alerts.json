@@ -28,9 +28,9 @@
   "states": {
     "eze-mad-may-2026": {
       "searchId": "eze-mad-may-2026",
-      "lastPrice": 3079,
+      "lastPrice": 779,
       "lastCurrency": "USD",
-      "lastCheckedAt": "2026-03-27T19:48:14.861Z",
+      "lastCheckedAt": "2026-03-27T19:51:50.531Z",
       "lastResult": {
         "price": 779,
         "currency": "USD",
@@ -50,7 +50,11 @@
           "directOnlyApplied": false,
           "notes": []
         }
-      }
+      },
+      "lastAlertedPrice": 779,
+      "lastAlertedCurrency": "USD",
+      "lastAlertedAt": "2026-03-27T19:51:50.531Z",
+      "lastAlertType": "below_threshold"
     }
   }
 }
