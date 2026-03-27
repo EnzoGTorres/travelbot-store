@@ -30,15 +30,15 @@
       "searchId": "eze-mad-may-2026",
       "lastPrice": 779,
       "lastCurrency": "USD",
-      "lastCheckedAt": "2026-03-27T06:41:48.983Z",
+      "lastCheckedAt": "2026-03-27T19:48:14.861Z",
       "lastResult": {
         "price": 779,
         "currency": "USD",
         "origin": "EZE",
         "destination": "MAD",
         "departureDate": "2026-05-10",
-        "market": "unknown",
-        "language": "unknown",
+        "market": "us",
+        "language": "en",
         "directOnly": false,
         "metadata": {
           "checkedCombinationCount": 1,
