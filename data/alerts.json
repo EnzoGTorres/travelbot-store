@@ -51,5 +51,10 @@
         }
       }
     }
+  },
+  "__testWrite": {
+    "timestamp": "2026-03-27T18:24:05.385Z",
+    "source": "travelbot",
+    "type": "integration-test"
   }
 }
