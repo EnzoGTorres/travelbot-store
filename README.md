@@ -94,6 +94,21 @@ npm run dev
 
 El diagnostico verifica acceso al repo, lectura del archivo, creacion inicial si falta, y un write probe para validar permisos de escritura.
 
+## Criterio de busqueda
+
+La busqueda principal de Travelbot para Espana esta pensada como ida y vuelta desde EZE hacia MAD o BCN. Como referencia personal, un precio normal ida y vuelta por persona suele moverse en torno a USD 1200-1500, asi que el umbral principal se dejo en USD 1090 para alertar solo oportunidades claras y no variaciones menores.
+
+Las busquedas secundarias de tramo simple usan umbrales proporcionalmente mas bajos:
+
+- solo ida EZE -> MAD/BCN: umbral USD 560
+- return-like MAD/BCN -> EZE: umbral USD 620
+
+El modelo actual no guarda una "vuelta" ligada a una ida previa, asi que la alerta return-like se resuelve de forma simple como tramos individuales desde MAD o BCN hacia EZE.
+
+Tambien se usan `minimumDropAmount` y `minimumDropPercent` para evitar spam por bajas chicas, y las ventanas flexibles se muestrean por pasos de varios dias para no explotar la cantidad de combinaciones consultadas en SerpAPI.
+
+Las alertas y logs muestran la aerolinea de la mejor opcion detectada. Si SerpAPI no la expone con claridad, Travelbot usa `Aerolínea no disponible`.
+
 ## Endpoint serverless
 
 Ruta:

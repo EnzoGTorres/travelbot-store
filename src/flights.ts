@@ -2,6 +2,7 @@ import axios from "axios";
 import { config } from "./config";
 import {
   BestFlightPrice,
+  DEFAULT_AIRLINE_LABEL,
   DateRangeInput,
   FlightSearchParams,
   MonitoredSearch,
@@ -12,8 +13,12 @@ const DEFAULT_MAX_RANGE_OPTIONS = 7;
 
 interface SerpApiFlightOption {
   price?: number | string;
-  flights?: unknown[];
+  flights?: SerpApiFlightSegment[];
   layovers?: unknown[];
+}
+
+interface SerpApiFlightSegment {
+  airline?: string;
 }
 
 interface SerpApiFlightsResponse {
@@ -35,6 +40,7 @@ interface SerpApiFlightsResponse {
 
 interface FlightResolutionContext {
   combinations: ResolvedFlightSearchParams[];
+  originCount: number;
   destinationCount: number;
   departureDateCount: number;
   returnDateCount: number;
@@ -138,6 +144,15 @@ function getDestinations(params: FlightSearchParams): string[] {
   return [...new Set(values)];
 }
 
+function getOrigins(params: FlightSearchParams): string[] {
+  const values = [params.origin, ...(params.origins ?? [])]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [...new Set(values)];
+}
+
 function buildCombinationLabel(params: ResolvedFlightSearchParams): string {
   return params.returnDate
     ? `${params.origin} -> ${params.destination} | ${params.departureDate} -> ${params.returnDate}`
@@ -146,7 +161,12 @@ function buildCombinationLabel(params: ResolvedFlightSearchParams): string {
 
 function resolveSearchParams(search: MonitoredSearch): FlightResolutionContext {
   const notes: string[] = [];
+  const origins = getOrigins(search.params);
   const destinations = getDestinations(search.params);
+
+  if (origins.length === 0) {
+    throw new Error(`La busqueda "${search.id}" no tiene ningun origen definido.`);
+  }
 
   if (destinations.length === 0) {
     throw new Error(`La busqueda "${search.id}" no tiene ningun destino definido.`);
@@ -180,24 +200,26 @@ function resolveSearchParams(search: MonitoredSearch): FlightResolutionContext {
   const market = search.params.market ?? config.serpApi.market;
   const directOnly = search.params.directOnly ?? false;
 
-  for (const destination of destinations) {
-    for (const departureDate of departureDates) {
-      for (const returnDate of returnDates) {
-        if (returnDate && returnDate < departureDate) {
-          continue;
-        }
+  for (const origin of origins) {
+    for (const destination of destinations) {
+      for (const departureDate of departureDates) {
+        for (const returnDate of returnDates) {
+          if (returnDate && returnDate < departureDate) {
+            continue;
+          }
 
-        combinations.push({
-          origin: search.params.origin,
-          destination,
-          departureDate,
-          returnDate: returnDate || undefined,
-          adults: search.params.adults,
-          currency,
-          language,
-          market,
-          directOnly
-        });
+          combinations.push({
+            origin,
+            destination,
+            departureDate,
+            returnDate: returnDate || undefined,
+            adults: search.params.adults,
+            currency,
+            language,
+            market,
+            directOnly
+          });
+        }
       }
     }
   }
@@ -208,6 +230,7 @@ function resolveSearchParams(search: MonitoredSearch): FlightResolutionContext {
 
   return {
     combinations,
+    originCount: origins.length,
     destinationCount: destinations.length,
     departureDateCount: departureDates.length,
     returnDateCount: returnDates.filter(Boolean).length,
@@ -227,11 +250,40 @@ function isDirectFlightOption(option: SerpApiFlightOption): boolean | undefined 
   return undefined;
 }
 
+function buildAirlineLabel(option: SerpApiFlightOption | undefined): string {
+  if (!option?.flights || option.flights.length === 0) {
+    return DEFAULT_AIRLINE_LABEL;
+  }
+
+  const airlines = option.flights
+    .map((segment) => (typeof segment.airline === "string" ? segment.airline.trim() : ""))
+    .filter(Boolean);
+
+  if (airlines.length === 0) {
+    return DEFAULT_AIRLINE_LABEL;
+  }
+
+  const uniqueAirlines = [...new Set(airlines)];
+
+  if (uniqueAirlines.length === 1) {
+    return uniqueAirlines[0];
+  }
+
+  const [primaryAirline, ...otherAirlines] = uniqueAirlines;
+
+  if (otherAirlines.length === 1) {
+    return `${primaryAirline} / ${otherAirlines[0]}`;
+  }
+
+  return `${primaryAirline} / ${otherAirlines[0]} / +${otherAirlines.length - 1}`;
+}
+
 async function fetchCombinationPrice(
   params: ResolvedFlightSearchParams
 ): Promise<{
   price: number;
   currency: string;
+  airline: string;
   directOnlyApplied: boolean;
   notes: string[];
 }> {
@@ -285,23 +337,30 @@ async function fetchCombinationPrice(
       }
     }
 
+    const bestFlightOption = candidateFlights.reduce<SerpApiFlightOption | undefined>(
+      (bestOption, flight) => {
+        const currentPrice = normalizePrice(flight.price);
+        const bestPrice = bestOption ? normalizePrice(bestOption.price) : undefined;
+
+        if (currentPrice === undefined) {
+          return bestOption;
+        }
+
+        if (bestPrice === undefined || currentPrice < bestPrice) {
+          return flight;
+        }
+
+        return bestOption;
+      },
+      undefined
+    );
+
     const baseInsightPrice = !params.directOnly || directOnlyApplied
       ? response.data.price_insights?.lowest_price
       : undefined;
-
-    const lowestFlightPrice = candidateFlights.reduce<number | undefined>((bestPrice, flight) => {
-      const currentPrice = normalizePrice(flight.price);
-
-      if (currentPrice === undefined) {
-        return bestPrice;
-      }
-
-      if (bestPrice === undefined || currentPrice < bestPrice) {
-        return currentPrice;
-      }
-
-      return bestPrice;
-    }, normalizePrice(baseInsightPrice));
+    const lowestFlightPrice = bestFlightOption
+      ? normalizePrice(bestFlightOption.price)
+      : normalizePrice(baseInsightPrice);
 
     if (lowestFlightPrice === undefined) {
       throw new Error("SerpAPI no devolvio ofertas para la busqueda indicada.");
@@ -310,6 +369,7 @@ async function fetchCombinationPrice(
     return {
       price: lowestFlightPrice,
       currency: response.data.search_parameters?.currency ?? params.currency,
+      airline: buildAirlineLabel(bestFlightOption),
       directOnlyApplied,
       notes
     };
@@ -339,6 +399,7 @@ export async function getBestFlightPrice(search: MonitoredSearch): Promise<BestF
         params: ResolvedFlightSearchParams;
         price: number;
         currency: string;
+        airline: string;
         directOnlyApplied: boolean;
         notes: string[];
       }
@@ -353,6 +414,7 @@ export async function getBestFlightPrice(search: MonitoredSearch): Promise<BestF
           params: combination,
           price: result.price,
           currency: result.currency,
+          airline: result.airline,
           directOnlyApplied: result.directOnlyApplied,
           notes: result.notes
         };
@@ -376,10 +438,12 @@ export async function getBestFlightPrice(search: MonitoredSearch): Promise<BestF
     destination: bestResult.params.destination,
     departureDate: bestResult.params.departureDate,
     returnDate: bestResult.params.returnDate,
+    airline: bestResult.airline,
     market: bestResult.params.market,
     language: bestResult.params.language,
     directOnly: bestResult.params.directOnly,
     metadata: {
+      checkedOriginCount: resolution.originCount,
       checkedCombinationCount: resolution.combinations.length,
       checkedDestinationCount: resolution.destinationCount,
       checkedDepartureDateCount: resolution.departureDateCount,

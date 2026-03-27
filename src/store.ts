@@ -5,6 +5,7 @@ import { config } from "./config";
 import {
   AlertsStore,
   BestFlightPrice,
+  DEFAULT_AIRLINE_LABEL,
   MonitoredSearch,
   SearchState,
   StoreWriteOptions,
@@ -85,44 +86,80 @@ export interface GitHubStoreIntegrationTestResult {
 export function loadExampleSearches(): MonitoredSearch[] {
   return [
     {
-      id: "eze-mad-may-2026",
-      name: "Buenos Aires a Madrid en mayo 2026",
+      id: "eze-espana-roundtrip-may-aug-2026",
+      name: "España ida y vuelta desde EZE (MAD/BCN, mayo-agosto 2026)",
       enabled: true,
-      params: {
-        origin: "EZE",
-        destination: "MAD",
-        departureDate: "2026-05-10",
-        adults: 1
-      },
-      alertBelowPrice: 800,
-      alertCooldownHours: 12
-    },
-    {
-      id: "eze-mad-bcn-flex-jun-2026",
-      name: "Buenos Aires a Madrid o Barcelona con fechas flexibles",
-      enabled: false,
       params: {
         origin: "EZE",
         destinations: ["MAD", "BCN"],
         departureDateRange: {
-          from: "2026-06-10",
-          to: "2026-06-16",
-          maxOptions: 4
+          from: "2026-05-01",
+          to: "2026-08-31",
+          stepDays: 14,
+          maxOptions: 8
         },
         returnDateRange: {
-          from: "2026-06-24",
-          to: "2026-06-30",
-          maxOptions: 4
+          from: "2026-05-10",
+          to: "2026-09-15",
+          stepDays: 14,
+          maxOptions: 8
         },
         adults: 1,
-        currency: "EUR",
+        currency: "USD",
         language: "es",
-        market: "ar",
-        directOnly: true
+        market: "ar"
       },
-      minimumDropAmount: 40,
-      minimumDropPercent: 5,
+      alertBelowPrice: 1090,
+      minimumDropAmount: 120,
+      minimumDropPercent: 8,
       alertCooldownHours: 24
+    },
+    {
+      id: "eze-espana-oneway-may-aug-2026",
+      name: "España solo ida desde EZE (MAD/BCN, mayo-agosto 2026)",
+      enabled: true,
+      params: {
+        origin: "EZE",
+        destinations: ["MAD", "BCN"],
+        departureDateRange: {
+          from: "2026-05-01",
+          to: "2026-08-31",
+          stepDays: 10,
+          maxOptions: 10
+        },
+        adults: 1,
+        currency: "USD",
+        language: "es",
+        market: "ar"
+      },
+      alertBelowPrice: 560,
+      minimumDropAmount: 60,
+      minimumDropPercent: 8,
+      alertCooldownHours: 18
+    },
+    {
+      id: "eze-espana-returnlike-may-aug-2026",
+      name: "España -> EZE tramo simple (MAD/BCN, mayo-septiembre 2026)",
+      enabled: true,
+      params: {
+        origin: "MAD",
+        origins: ["BCN"],
+        destination: "EZE",
+        departureDateRange: {
+          from: "2026-05-10",
+          to: "2026-09-15",
+          stepDays: 10,
+          maxOptions: 10
+        },
+        adults: 1,
+        currency: "USD",
+        language: "es",
+        market: "ar"
+      },
+      alertBelowPrice: 620,
+      minimumDropAmount: 70,
+      minimumDropPercent: 8,
+      alertCooldownHours: 18
     }
   ];
 }
@@ -153,10 +190,17 @@ function normalizeLastResult(value: Partial<BestFlightPrice> | undefined): BestF
     destination: value.destination,
     departureDate: value.departureDate,
     returnDate: typeof value.returnDate === "string" ? value.returnDate : undefined,
+    airline: typeof value.airline === "string" && value.airline.trim()
+      ? value.airline.trim()
+      : DEFAULT_AIRLINE_LABEL,
     market: typeof value.market === "string" ? value.market : "unknown",
     language: typeof value.language === "string" ? value.language : "unknown",
     directOnly: typeof value.directOnly === "boolean" ? value.directOnly : false,
     metadata: {
+      checkedOriginCount:
+        typeof value.metadata?.checkedOriginCount === "number"
+          ? value.metadata.checkedOriginCount
+          : 1,
       checkedCombinationCount:
         typeof value.metadata?.checkedCombinationCount === "number"
           ? value.metadata.checkedCombinationCount

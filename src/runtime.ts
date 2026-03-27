@@ -23,7 +23,8 @@ function buildShortSuccessSummary(result: Parameters<typeof formatCheckLog>[0]):
     `status=${result.status}`,
     `eligible=${result.shouldAlert ? "yes" : "no"}`,
     `notification=${result.notification.status}`,
-    `price=${result.current.currency} ${result.current.price}`
+    `price=${result.current.currency} ${result.current.price}`,
+    `airline=${result.current.airline}`
   ].join(" ");
 }
 
@@ -34,6 +35,7 @@ function buildSuccessDetail(result: Parameters<typeof formatCheckLog>[0]): Searc
     ok: true,
     status: result.status,
     dryRun: result.dryRun,
+    airline: result.current.airline,
     alertEligible: result.shouldAlert,
     alertSent: result.notification.status === "sent",
     notificationStatus: result.notification.status,

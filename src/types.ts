@@ -7,6 +7,7 @@ export interface DateRangeInput {
 
 export interface FlightSearchParams {
   origin: string;
+  origins?: string[];
   destination?: string;
   destinations?: string[];
   departureDate?: string;
@@ -33,6 +34,7 @@ export interface ResolvedFlightSearchParams {
 }
 
 export interface FlightSelectionMetadata {
+  checkedOriginCount: number;
   checkedCombinationCount: number;
   checkedDestinationCount: number;
   checkedDepartureDateCount: number;
@@ -50,6 +52,7 @@ export interface BestFlightPrice {
   destination: string;
   departureDate: string;
   returnDate?: string;
+  airline: string;
   market: string;
   language: string;
   directOnly: boolean;
@@ -141,6 +144,7 @@ export interface SearchCheckDetail {
   ok: boolean;
   status?: SearchCheckStatus;
   dryRun: boolean;
+  airline?: string;
   alertEligible?: boolean;
   alertSent?: boolean;
   notificationStatus?: NotificationStatus;
@@ -168,3 +172,5 @@ export interface ChecksRunSummary {
   persistence: ChecksPersistenceSummary;
   details: SearchCheckDetail[];
 }
+
+export const DEFAULT_AIRLINE_LABEL = "Aerolínea no disponible";

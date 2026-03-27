@@ -1,60 +1,81 @@
 {
   "searches": [
     {
-      "id": "eze-mad-may-2026",
-      "name": "Buenos Aires a Madrid en mayo 2026",
+      "id": "eze-espana-roundtrip-may-aug-2026",
+      "name": "España ida y vuelta desde EZE (MAD/BCN, mayo-agosto 2026)",
       "enabled": true,
       "params": {
         "origin": "EZE",
-        "destination": "MAD",
-        "departureDate": "2026-05-10",
-        "adults": 1
+        "destinations": ["MAD", "BCN"],
+        "departureDateRange": {
+          "from": "2026-05-01",
+          "to": "2026-08-31",
+          "stepDays": 14,
+          "maxOptions": 8
+        },
+        "returnDateRange": {
+          "from": "2026-05-10",
+          "to": "2026-09-15",
+          "stepDays": 14,
+          "maxOptions": 8
+        },
+        "adults": 1,
+        "currency": "USD",
+        "language": "es",
+        "market": "ar"
       },
-      "alertBelowPrice": 700,
-      "alertCooldownHours": 0
+      "alertBelowPrice": 1090,
+      "minimumDropAmount": 120,
+      "minimumDropPercent": 8,
+      "alertCooldownHours": 24
     },
     {
-      "id": "eze-bcn-jun-2026",
-      "name": "Buenos Aires a Barcelona en junio 2026",
-      "enabled": false,
+      "id": "eze-espana-oneway-may-aug-2026",
+      "name": "España solo ida desde EZE (MAD/BCN, mayo-agosto 2026)",
+      "enabled": true,
       "params": {
         "origin": "EZE",
-        "destination": "BCN",
-        "departureDate": "2026-06-15",
-        "adults": 1
-      }
+        "destinations": ["MAD", "BCN"],
+        "departureDateRange": {
+          "from": "2026-05-01",
+          "to": "2026-08-31",
+          "stepDays": 10,
+          "maxOptions": 10
+        },
+        "adults": 1,
+        "currency": "USD",
+        "language": "es",
+        "market": "ar"
+      },
+      "alertBelowPrice": 560,
+      "minimumDropAmount": 60,
+      "minimumDropPercent": 8,
+      "alertCooldownHours": 18
+    },
+    {
+      "id": "eze-espana-returnlike-may-aug-2026",
+      "name": "España -> EZE tramo simple (MAD/BCN, mayo-septiembre 2026)",
+      "enabled": true,
+      "params": {
+        "origin": "MAD",
+        "origins": ["BCN"],
+        "destination": "EZE",
+        "departureDateRange": {
+          "from": "2026-05-10",
+          "to": "2026-09-15",
+          "stepDays": 10,
+          "maxOptions": 10
+        },
+        "adults": 1,
+        "currency": "USD",
+        "language": "es",
+        "market": "ar"
+      },
+      "alertBelowPrice": 620,
+      "minimumDropAmount": 70,
+      "minimumDropPercent": 8,
+      "alertCooldownHours": 18
     }
   ],
-  "states": {
-    "eze-mad-may-2026": {
-      "searchId": "eze-mad-may-2026",
-      "lastPrice": 779,
-      "lastCurrency": "USD",
-      "lastCheckedAt": "2026-03-27T19:51:50.531Z",
-      "lastResult": {
-        "price": 779,
-        "currency": "USD",
-        "origin": "EZE",
-        "destination": "MAD",
-        "departureDate": "2026-05-10",
-        "market": "us",
-        "language": "en",
-        "directOnly": false,
-        "metadata": {
-          "checkedCombinationCount": 1,
-          "checkedDestinationCount": 1,
-          "checkedDepartureDateCount": 1,
-          "checkedReturnDateCount": 0,
-          "selectedCombinationLabel": "EZE -> MAD | 2026-05-10",
-          "directOnlyRequested": false,
-          "directOnlyApplied": false,
-          "notes": []
-        }
-      },
-      "lastAlertedPrice": 779,
-      "lastAlertedCurrency": "USD",
-      "lastAlertedAt": "2026-03-27T19:51:50.531Z",
-      "lastAlertType": "below_threshold"
-    }
-  }
+  "states": {}
 }

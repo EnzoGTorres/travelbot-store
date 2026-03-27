@@ -94,8 +94,13 @@ function resolveCheckOptions(options?: RunChecksOptions): CheckExecutionOptions 
 function buildResolutionSummary(current: BestFlightPrice): string {
   const parts = [
     `Mejor opcion: ${current.metadata.selectedCombinationLabel}`,
-    `Combinaciones evaluadas: ${current.metadata.checkedCombinationCount}`
+    `Combinaciones evaluadas: ${current.metadata.checkedCombinationCount}`,
+    `Aerolinea: ${current.airline}`
   ];
+
+  if (current.metadata.checkedOriginCount > 1) {
+    parts.push(`Origenes: ${current.metadata.checkedOriginCount}`);
+  }
 
   if (current.metadata.checkedDestinationCount > 1) {
     parts.push(`Destinos: ${current.metadata.checkedDestinationCount}`);
@@ -122,19 +127,26 @@ function buildResolutionSummary(current: BestFlightPrice): string {
 
 export function formatTelegramAlert(result: SearchCheckResult): string {
   const alertType =
-    result.alertType === "below_threshold" ? "Precio bajo tu umbral" : "Precio mas bajo";
+    result.alertType === "below_threshold" ? "Bajo umbral" : "Bajo de precio";
   const previousPrice = result.previous
     ? `${result.previous.lastCurrency} ${result.previous.lastPrice}`
     : "n/a";
+  const differenceLabel =
+    result.previous && result.difference !== 0
+      ? `${result.current.currency} ${Math.abs(result.difference)}`
+      : "n/a";
 
   return [
-    "Travelbot",
+    "✈️ Travelbot",
     "",
     `Busqueda: ${result.search.name}`,
     `Ruta: ${result.current.origin} -> ${result.current.destination}`,
-    `Fecha: ${formatTripDate(result.current)}`,
+    `Salida: ${result.current.departureDate}`,
+    `Vuelta: ${result.current.returnDate ?? "n/a"}`,
+    `Aerolinea: ${result.current.airline}`,
     `Precio actual: ${result.current.currency} ${result.current.price}`,
     `Precio anterior: ${previousPrice}`,
+    `Diferencia: ${differenceLabel}`,
     `Baja absoluta: ${result.current.currency} ${result.dropAmount}`,
     `Baja porcentual: ${result.dropPercent !== undefined ? formatPercent(result.dropPercent) : "n/a"}`,
     `Tipo de alerta: ${alertType}`,
@@ -335,7 +347,7 @@ function buildDryRunNotification(
 
   return {
     status: "dry_run",
-    reason: "Dry-run: alerta elegible, no se envia Telegram ni se persiste estado.",
+    reason: `Dry-run: alerta elegible con ${current.airline}, no se envia Telegram ni se persiste estado.`,
     alertType
   };
 }
@@ -530,6 +542,7 @@ export function formatCheckLog(result: SearchCheckResult): string {
         `Busqueda: ${result.search.name}`,
         `Ruta: ${route}`,
         `Fecha: ${tripDate}`,
+        `Aerolinea: ${result.current.airline}`,
         `Precio actual: ${currentPrice}`,
         buildResolutionSummary(result.current),
         metadataNotes,
@@ -543,6 +556,7 @@ export function formatCheckLog(result: SearchCheckResult): string {
         `Busqueda: ${result.search.name}`,
         `Antes: ${result.previous?.lastCurrency} ${result.previous?.lastPrice}`,
         `Ahora: ${currentPrice}`,
+        `Aerolinea: ${result.current.airline}`,
         `Baja absoluta: ${result.current.currency} ${result.dropAmount}`,
         `Baja porcentual: ${result.dropPercent !== undefined ? formatPercent(result.dropPercent) : "n/a"}`,
         `Tipo: ${result.alertType === "below_threshold" ? "below_threshold" : "price_dropped"}`,
@@ -558,6 +572,7 @@ export function formatCheckLog(result: SearchCheckResult): string {
         `Busqueda: ${result.search.name}`,
         `Antes: ${result.previous?.lastCurrency} ${result.previous?.lastPrice}`,
         `Ahora: ${currentPrice}`,
+        `Aerolinea: ${result.current.airline}`,
         `Diferencia: ${result.current.currency} ${result.difference}`,
         buildResolutionSummary(result.current),
         metadataNotes,
@@ -570,6 +585,7 @@ export function formatCheckLog(result: SearchCheckResult): string {
         `[${result.search.id}] Sin cambios`,
         `Busqueda: ${result.search.name}`,
         `Precio: ${currentPrice}`,
+        `Aerolinea: ${result.current.airline}`,
         `Ultimo chequeo previo: ${result.previous?.lastCheckedAt ?? "n/a"}`,
         buildResolutionSummary(result.current),
         metadataNotes,
