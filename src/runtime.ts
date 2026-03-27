@@ -110,11 +110,22 @@ export async function runChecksWithSummary(options?: RunChecksOptions): Promise<
   );
 
   for (const search of enabledSearches) {
+    const searchStartedAt = Date.now();
+
+    console.log(`[Travelbot] Iniciando busqueda ${search.id} (${search.name})`);
+
     try {
       const result = await runSearchCheckWithStore(store, search, { dryRun });
       details.push(buildSuccessDetail(result));
+      console.log(
+        `[Travelbot] Busqueda ${search.id} finalizada en ${Date.now() - searchStartedAt}ms con status=${result.status} notification=${result.notification.status}`
+      );
     } catch (error: unknown) {
       details.push(buildErrorDetail(search.id, search.name, dryRun, error));
+      const message = error instanceof Error ? error.message : "Error desconocido.";
+      console.error(
+        `[Travelbot] Busqueda ${search.id} fallo tras ${Date.now() - searchStartedAt}ms: ${message}`
+      );
     }
   }
 
@@ -140,6 +151,10 @@ export async function runChecksWithSummary(options?: RunChecksOptions): Promise<
       retried: writeResult.retried
     };
 
+    console.log(
+      `Fin de corrida Travelbot: chequeadas=${summary.checkedCount} elegibles=${summary.alertsEligible} alertas=${summary.alertsSent} skipped=${summary.skipped} errores=${summary.errors} duracionMs=${summary.durationMs} persistencia=ok retried=${writeResult.retried ? "yes" : "no"}`
+    );
+
     return summary;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error desconocido.";
@@ -150,6 +165,10 @@ export async function runChecksWithSummary(options?: RunChecksOptions): Promise<
       retried: false,
       error: message
     };
+
+    console.error(
+      `Fin de corrida Travelbot: chequeadas=${summary.checkedCount} elegibles=${summary.alertsEligible} alertas=${summary.alertsSent} skipped=${summary.skipped} errores=${summary.errors} duracionMs=${summary.durationMs} persistencia=error`
+    );
 
     throw new ChecksRunPersistenceError(
       `La corrida termino pero fallo la persistencia final: ${message}`,

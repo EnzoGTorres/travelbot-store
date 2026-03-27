@@ -47,6 +47,15 @@ interface FlightResolutionContext {
   notes: string[];
 }
 
+interface CombinationPriceResult {
+  params: ResolvedFlightSearchParams;
+  price: number;
+  currency: string;
+  airline: string;
+  directOnlyApplied: boolean;
+  notes: string[];
+}
+
 function normalizePrice(value: number | string | undefined): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -289,6 +298,7 @@ async function fetchCombinationPrice(
 }> {
   try {
     const response = await axios.get<SerpApiFlightsResponse>(config.serpApi.baseUrl, {
+      timeout: config.serpApi.requestTimeoutMs,
       params: {
         engine: "google_flights",
         api_key: config.serpApi.getApiKey(),
@@ -381,6 +391,12 @@ async function fetchCombinationPrice(
           ? JSON.stringify(error.response.data)
           : undefined;
 
+      if (error.code === "ECONNABORTED") {
+        throw new Error(
+          `SerpAPI excedio el timeout de ${config.serpApi.requestTimeoutMs}ms para esta combinacion.`
+        );
+      }
+
       throw new Error(
         status
           ? `No se pudo consultar vuelos en SerpAPI. Status ${status}.${detail ? ` ${detail}` : ""}`
@@ -392,38 +408,72 @@ async function fetchCombinationPrice(
   }
 }
 
-export async function getBestFlightPrice(search: MonitoredSearch): Promise<BestFlightPrice> {
-  const resolution = resolveSearchParams(search);
-  let bestResult:
-    | {
-        params: ResolvedFlightSearchParams;
-        price: number;
-        currency: string;
-        airline: string;
-        directOnlyApplied: boolean;
-        notes: string[];
-      }
-    | undefined;
+async function findBestPriceAcrossCombinations(
+  search: MonitoredSearch,
+  resolution: FlightResolutionContext
+): Promise<CombinationPriceResult | undefined> {
+  const concurrency = Math.min(
+    Math.max(config.flights.fetchConcurrency, 1),
+    resolution.combinations.length
+  );
+  let bestResult: CombinationPriceResult | undefined;
+  let nextIndex = 0;
+  let completedCount = 0;
 
-  for (const combination of resolution.combinations) {
-    try {
-      const result = await fetchCombinationPrice(combination);
+  console.log(
+    `[Travelbot] ${search.id}: evaluando ${resolution.combinations.length} combinacion(es) con concurrencia=${concurrency} timeout=${config.serpApi.requestTimeoutMs}ms`
+  );
 
-      if (!bestResult || result.price < bestResult.price) {
-        bestResult = {
-          params: combination,
-          price: result.price,
-          currency: result.currency,
-          airline: result.airline,
-          directOnlyApplied: result.directOnlyApplied,
-          notes: result.notes
-        };
+  async function worker(): Promise<void> {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+
+      if (currentIndex >= resolution.combinations.length) {
+        return;
       }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Error desconocido.";
-      resolution.notes.push(`${buildCombinationLabel(combination)}: ${message}`);
+
+      const combination = resolution.combinations[currentIndex];
+
+      try {
+        const result = await fetchCombinationPrice(combination);
+
+        if (!bestResult || result.price < bestResult.price) {
+          bestResult = {
+            params: combination,
+            price: result.price,
+            currency: result.currency,
+            airline: result.airline,
+            directOnlyApplied: result.directOnlyApplied,
+            notes: result.notes
+          };
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error desconocido.";
+        resolution.notes.push(`${buildCombinationLabel(combination)}: ${message}`);
+      } finally {
+        completedCount += 1;
+
+        if (
+          completedCount === resolution.combinations.length ||
+          completedCount % Math.min(concurrency * 2, 10) === 0
+        ) {
+          console.log(
+            `[Travelbot] ${search.id}: progreso ${completedCount}/${resolution.combinations.length} combinacion(es) evaluadas`
+          );
+        }
+      }
     }
   }
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+
+  return bestResult;
+}
+
+export async function getBestFlightPrice(search: MonitoredSearch): Promise<BestFlightPrice> {
+  const resolution = resolveSearchParams(search);
+  const bestResult = await findBestPriceAcrossCombinations(search, resolution);
 
   if (!bestResult) {
     throw new Error(
