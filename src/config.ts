@@ -67,6 +67,9 @@ export const config = {
     secret: readOptionalEnv("TRAVELBOT_CHECK_SECRET"),
     dryRun: readBooleanEnv("TRAVELBOT_DRY_RUN", false)
   },
+  diagnostics: {
+    runGithubStoreOnStartup: readBooleanEnv("TRAVELBOT_RUN_STORE_DIAGNOSTIC", false)
+  },
   storage: {
     provider: readStorageProvider(),
     filePath: readOptionalEnv("TRAVELBOT_ALERTS_FILE"),

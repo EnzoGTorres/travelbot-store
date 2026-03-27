@@ -24,9 +24,62 @@ interface GithubContentResponse {
   encoding?: string;
 }
 
+interface GithubContentWriteResponse {
+  content?: {
+    sha?: string;
+    path?: string;
+  };
+  commit?: {
+    sha?: string;
+    html_url?: string;
+  };
+}
+
+interface GithubRepositoryResponse {
+  full_name: string;
+  private: boolean;
+  default_branch: string;
+}
+
 interface GithubStoreFileReadResult {
   store: AlertsStore;
   sha?: string;
+  rawContent?: string;
+}
+
+interface GithubErrorInfo {
+  status?: number;
+  message: string;
+  detail?: string;
+}
+
+type GithubDiagnosticContext = "repo_access" | "file_read" | "file_create" | "file_write";
+
+export interface GitHubStoreDiagnosticResult {
+  ok: boolean;
+  repoAccessible: boolean;
+  fileFound: boolean;
+  fileCreated: boolean;
+  readSucceeded: boolean;
+  writeSucceeded: boolean;
+  storeLabel: string;
+}
+
+export interface GitHubStoreIntegrationTestOptions {
+  dryRun?: boolean;
+}
+
+export interface GitHubStoreIntegrationTestResult {
+  ok: boolean;
+  dryRun: boolean;
+  repoAccessible: boolean;
+  fileRead: boolean;
+  jsonValid: boolean;
+  writeSucceeded: boolean;
+  verificationSucceeded: boolean;
+  revertSucceeded: boolean;
+  storeLabel: string;
+  testTimestamp: string;
 }
 
 export function loadExampleSearches(): MonitoredSearch[] {
@@ -218,6 +271,112 @@ function getGithubHeaders() {
   };
 }
 
+function getGithubRepoUrl(): string {
+  const githubConfig = getGithubStoreConfig();
+
+  return `${GITHUB_API_BASE_URL}/repos/${githubConfig.owner}/${githubConfig.repo}`;
+}
+
+function getGithubContentsUrl(): string {
+  const githubConfig = getGithubStoreConfig();
+
+  return `${getGithubRepoUrl()}/contents/${githubConfig.path}`;
+}
+
+function getGithubStoreLabelFromConfig(): string {
+  const githubConfig = getGithubStoreConfig();
+
+  return `github://${githubConfig.owner}/${githubConfig.repo}/${githubConfig.path}@${githubConfig.branch}`;
+}
+
+function extractGithubErrorInfo(error: unknown, fallbackMessage: string): GithubErrorInfo {
+  if (!axios.isAxiosError(error)) {
+    if (error instanceof Error) {
+      return { message: error.message };
+    }
+
+    return { message: fallbackMessage };
+  }
+
+  const status = error.response?.status;
+  const data = error.response?.data;
+  const message =
+    typeof data === "object" && data !== null && "message" in data && typeof data.message === "string"
+      ? data.message
+      : error.message || fallbackMessage;
+  const detail =
+    typeof data === "string"
+      ? data
+      : typeof data === "object" && data !== null
+        ? JSON.stringify(data)
+        : undefined;
+
+  return {
+    status,
+    message,
+    detail
+  };
+}
+
+function getGithubDiagnosticSuggestion(
+  context: GithubDiagnosticContext,
+  status: number | undefined
+): string {
+  const githubConfig = getGithubStoreConfig();
+
+  switch (status) {
+    case 401:
+      return "Sugerencia: revisa GITHUB_STORE_TOKEN. Debe ser valido, no estar expirado y pertenecer a un token con acceso al repo.";
+    case 403:
+      return "Sugerencia: el token necesita permiso Contents con lectura y escritura sobre el repo. Si es fine-grained, confirma tambien que el repositorio este seleccionado.";
+    case 404:
+      if (context === "repo_access") {
+        return `Sugerencia: verifica GITHUB_STORE_OWNER (${githubConfig.owner}) y GITHUB_STORE_REPO (${githubConfig.repo}), y que el token pueda ver ese repositorio.`;
+      }
+
+      if (context === "file_read") {
+        return `Sugerencia: verifica GITHUB_STORE_PATH (${githubConfig.path}) y GITHUB_STORE_BRANCH (${githubConfig.branch}). Si el archivo no existe, el diagnostico intentara crearlo.`;
+      }
+
+      return `Sugerencia: verifica que el branch ${githubConfig.branch} exista y que el token tenga permiso de escritura Contents sobre ${githubConfig.owner}/${githubConfig.repo}.`;
+    default:
+      return "Sugerencia: revisa owner, repo, branch, path y permisos del token; si usas un token fine-grained, confirma acceso explicito al repositorio.";
+  }
+}
+
+function logGithubDiagnosticError(
+  context: GithubDiagnosticContext,
+  label: string,
+  error: unknown
+): GithubErrorInfo {
+  const info = extractGithubErrorInfo(error, label);
+
+  if (info.status) {
+    console.error(`[GitHub Store] ${label}: HTTP ${info.status} - ${info.message}`);
+  } else {
+    console.error(`[GitHub Store] ${label}: ${info.message}`);
+  }
+
+  if (info.detail && info.detail !== info.message) {
+    console.error(`[GitHub Store] Detalle HTTP: ${info.detail}`);
+  }
+
+  console.info(`[GitHub Store] ${getGithubDiagnosticSuggestion(context, info.status)}`);
+
+  return info;
+}
+
+function formatGithubOperationError(prefix: string, error: unknown): Error {
+  const info = extractGithubErrorInfo(error, prefix);
+  const detailSuffix = info.detail && info.detail !== info.message ? ` ${info.detail}` : "";
+
+  if (info.status) {
+    return new Error(`${prefix}. Status ${info.status}: ${info.message}${detailSuffix}`);
+  }
+
+  return new Error(`${prefix}: ${info.message}`);
+}
+
 function isRecoverableGithubConflictStatus(status: number | undefined): boolean {
   return status === 409 || status === 412 || status === 422;
 }
@@ -247,12 +406,14 @@ function mergeStoreForRetry(
   };
 }
 
-async function readGithubStoreFile(): Promise<GithubStoreFileReadResult> {
+async function readGithubStoreFile(
+  options?: { allowMissing?: boolean }
+): Promise<GithubStoreFileReadResult> {
   const githubConfig = getGithubStoreConfig();
-  const url = `${GITHUB_API_BASE_URL}/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.path}`;
+  const allowMissing = options?.allowMissing ?? true;
 
   try {
-    const response = await axios.get<GithubContentResponse>(url, {
+    const response = await axios.get<GithubContentResponse>(getGithubContentsUrl(), {
       headers: getGithubHeaders(),
       params: { ref: githubConfig.branch }
     });
@@ -267,61 +428,57 @@ async function readGithubStoreFile(): Promise<GithubStoreFileReadResult> {
 
     return {
       store: normalizeStore(parsedContent),
-      sha: response.data.sha
+      sha: response.data.sha,
+      rawContent: decodedContent
     };
   } catch (error: unknown) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
+    if (allowMissing && axios.isAxiosError(error) && error.response?.status === 404) {
       console.warn("Store GitHub no existe todavia. Se usara un store inicial en memoria.");
       return { store: createInitialStore() };
     }
 
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status;
-      const detail =
-        typeof error.response?.data === "object" && error.response?.data !== null
-          ? JSON.stringify(error.response.data)
-          : undefined;
-
-      throw new Error(
-        status
-          ? `No se pudo leer el store en GitHub. Status ${status}.${detail ? ` ${detail}` : ""}`
-          : "No se pudo leer el store en GitHub."
-      );
-    }
-
-    if (error instanceof Error) {
-      throw new Error(`No se pudo leer el store en GitHub: ${error.message}`);
-    }
-
-    throw error;
+    throw formatGithubOperationError("No se pudo leer el store en GitHub", error);
   }
+}
+
+async function putGithubStoreFileContent(
+  contentText: string,
+  message: string,
+  sha?: string
+): Promise<GithubContentWriteResponse> {
+  const githubConfig = getGithubStoreConfig();
+
+  return (
+    await axios.put<GithubContentWriteResponse>(
+      getGithubContentsUrl(),
+      {
+        message,
+        content: Buffer.from(contentText, "utf-8").toString("base64"),
+        branch: githubConfig.branch,
+        sha
+      },
+      {
+        headers: getGithubHeaders()
+      }
+    )
+  ).data;
 }
 
 async function writeGithubStoreFile(
   store: AlertsStore,
   options?: StoreWriteOptions
 ): Promise<StoreWriteResult> {
-  const githubConfig = getGithubStoreConfig();
-  const url = `${GITHUB_API_BASE_URL}/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.path}`;
   let nextStore = store;
   let retried = false;
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const current = await readGithubStoreFile();
-    const content = Buffer.from(JSON.stringify(nextStore, null, 2), "utf-8").toString("base64");
 
     try {
-      await axios.put(
-        url,
-        {
-          message: "chore: update travelbot alerts store",
-          content,
-          branch: githubConfig.branch,
-          sha: current.sha
-        },
-        {
-          headers: getGithubHeaders()
-        }
+      await putGithubStoreFileContent(
+        JSON.stringify(nextStore, null, 2),
+        "chore: update travelbot alerts store",
+        current.sha
       );
 
       if (retried) {
@@ -345,16 +502,7 @@ async function writeGithubStoreFile(
           continue;
         }
 
-        const detail =
-          typeof error.response?.data === "object" && error.response?.data !== null
-            ? JSON.stringify(error.response.data)
-            : undefined;
-
-        throw new Error(
-          status
-            ? `No se pudo escribir el store en GitHub. Status ${status}.${detail ? ` ${detail}` : ""}`
-            : "No se pudo escribir el store en GitHub."
-        );
+        throw formatGithubOperationError("No se pudo escribir el store en GitHub", error);
       }
 
       throw error;
@@ -362,6 +510,56 @@ async function writeGithubStoreFile(
   }
 
   throw new Error("No se pudo escribir el store en GitHub despues del reintento.");
+}
+
+async function readGithubRepository(): Promise<GithubRepositoryResponse> {
+  const response = await axios.get<GithubRepositoryResponse>(getGithubRepoUrl(), {
+    headers: getGithubHeaders()
+  });
+
+  return response.data;
+}
+
+function parseGithubStoreJsonDocument(rawContent: string): Record<string, unknown> {
+  const parsed = JSON.parse(rawContent) as unknown;
+
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+    throw new Error("El archivo debe contener un objeto JSON en el nivel superior.");
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function buildGithubStoreIntegrationPayload(
+  document: Record<string, unknown>,
+  testTimestamp: string
+): string {
+  return JSON.stringify(
+    {
+      ...document,
+      __testWrite: {
+        timestamp: testTimestamp,
+        source: "travelbot",
+        type: "integration-test"
+      }
+    },
+    null,
+    2
+  );
+}
+
+function hasMatchingTestWriteMarker(
+  document: Record<string, unknown>,
+  testTimestamp: string
+): boolean {
+  const marker = document.__testWrite;
+
+  return (
+    typeof marker === "object" &&
+    marker !== null &&
+    "timestamp" in marker &&
+    marker.timestamp === testTimestamp
+  );
 }
 
 async function ensureLocalAlertsFilesExist(): Promise<void> {
@@ -429,10 +627,248 @@ export async function writeAlertsStore(
   };
 }
 
+export async function runGitHubStoreIntegrationTest(
+  options?: GitHubStoreIntegrationTestOptions
+): Promise<GitHubStoreIntegrationTestResult> {
+  const dryRun = options?.dryRun ?? false;
+  const testTimestamp = new Date().toISOString();
+  const result: GitHubStoreIntegrationTestResult = {
+    ok: false,
+    dryRun,
+    repoAccessible: false,
+    fileRead: false,
+    jsonValid: false,
+    writeSucceeded: false,
+    verificationSucceeded: false,
+    revertSucceeded: false,
+    storeLabel: getGithubStoreLabelFromConfig(),
+    testTimestamp
+  };
+
+  let originalRawContent: string | undefined;
+  let revertSha: string | undefined;
+  let shouldRevert = false;
+
+  console.log("[GitHub Store] Iniciando prueba de integracion...");
+  console.log(`[GitHub Store] Destino: ${result.storeLabel}`);
+  console.log(`[GitHub Store] DRY_RUN=${dryRun}`);
+  console.log("[GitHub Store] Paso 1/6: verificando acceso al repositorio...");
+
+  try {
+    await readGithubRepository();
+    result.repoAccessible = true;
+    console.log("[GitHub Store] Repo accesible");
+  } catch (error: unknown) {
+    logGithubDiagnosticError("repo_access", "No se pudo acceder al repositorio", error);
+    return result;
+  }
+
+  console.log("[GitHub Store] Paso 2/6: leyendo data/alerts.json...");
+
+  let storeFile: GithubStoreFileReadResult;
+
+  try {
+    storeFile = await readGithubStoreFile({ allowMissing: false });
+    result.fileRead = true;
+    originalRawContent = storeFile.rawContent;
+    revertSha = storeFile.sha;
+    console.log("[GitHub Store] Archivo leido correctamente");
+  } catch (error: unknown) {
+    logGithubDiagnosticError("file_read", "No se pudo leer el archivo del store", error);
+    return result;
+  }
+
+  if (!storeFile.sha || !storeFile.rawContent) {
+    console.error("[GitHub Store] Error: el archivo existe pero GitHub no devolvio sha o contenido.");
+    return result;
+  }
+
+  console.log("[GitHub Store] Paso 3/6: parseando JSON...");
+
+  let parsedDocument: Record<string, unknown>;
+
+  try {
+    parsedDocument = parseGithubStoreJsonDocument(storeFile.rawContent);
+    result.jsonValid = true;
+    console.log("[GitHub Store] JSON valido");
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "No se pudo parsear el JSON del store.";
+    console.error(`[GitHub Store] Error de parseo JSON: ${message}`);
+    return result;
+  }
+
+  if (dryRun) {
+    result.ok = true;
+    console.log("[GitHub Store] DRY_RUN activo. Se omite la escritura y la verificacion remota.");
+    return result;
+  }
+
+  console.log("[GitHub Store] Paso 4/6: escribiendo marca temporal de prueba...");
+
+  try {
+    const response = await putGithubStoreFileContent(
+      buildGithubStoreIntegrationPayload(parsedDocument, testTimestamp),
+      `chore: travelbot github store integration test ${testTimestamp}`,
+      storeFile.sha
+    );
+    result.writeSucceeded = true;
+    revertSha = response.content?.sha ?? revertSha;
+    shouldRevert = true;
+    console.log("[GitHub Store] Write OK");
+  } catch (error: unknown) {
+    logGithubDiagnosticError("file_write", "No se pudo escribir el archivo del store", error);
+    return result;
+  }
+
+  console.log("[GitHub Store] Paso 5/6: verificando el cambio remoto...");
+
+  try {
+    const verificationFile = await readGithubStoreFile({ allowMissing: false });
+
+    if (!verificationFile.rawContent) {
+      throw new Error("GitHub no devolvio el contenido actualizado del archivo.");
+    }
+
+    const verifiedDocument = parseGithubStoreJsonDocument(verificationFile.rawContent);
+
+    if (!hasMatchingTestWriteMarker(verifiedDocument, testTimestamp)) {
+      throw new Error("El campo __testWrite no coincide con el timestamp esperado.");
+    }
+
+    result.verificationSucceeded = true;
+    revertSha = verificationFile.sha ?? revertSha;
+    console.log("[GitHub Store] Verificacion OK");
+  } catch (error: unknown) {
+    if (error instanceof SyntaxError) {
+      console.error(`[GitHub Store] Error de parseo JSON: ${error.message}`);
+    } else if (axios.isAxiosError(error)) {
+      logGithubDiagnosticError("file_read", "No se pudo releer el archivo para verificar", error);
+    } else {
+      const message =
+        error instanceof Error ? error.message : "No se pudo verificar el cambio remoto.";
+      console.error(`[GitHub Store] Error de verificacion: ${message}`);
+    }
+  } finally {
+    if (shouldRevert && originalRawContent && revertSha) {
+      console.log("[GitHub Store] Paso 6/6: revirtiendo el cambio temporal...");
+
+      try {
+        await putGithubStoreFileContent(
+          originalRawContent,
+          `chore: revert travelbot github store integration test ${testTimestamp}`,
+          revertSha
+        );
+        result.revertSucceeded = true;
+        console.log("[GitHub Store] Revert OK");
+      } catch (error: unknown) {
+        logGithubDiagnosticError("file_write", "No se pudo revertir el cambio temporal", error);
+      }
+    }
+  }
+
+  result.ok =
+    result.repoAccessible &&
+    result.fileRead &&
+    result.jsonValid &&
+    result.writeSucceeded &&
+    result.verificationSucceeded &&
+    result.revertSucceeded;
+
+  return result;
+}
+
+export async function testGitHubStoreConnection(): Promise<GitHubStoreDiagnosticResult> {
+  const result: GitHubStoreDiagnosticResult = {
+    ok: false,
+    repoAccessible: false,
+    fileFound: false,
+    fileCreated: false,
+    readSucceeded: false,
+    writeSucceeded: false,
+    storeLabel: getGithubStoreLabelFromConfig()
+  };
+
+  console.log("[GitHub Store] Iniciando diagnostico de conexion...");
+  console.log(`[GitHub Store] Destino: ${result.storeLabel}`);
+  console.log("[GitHub Store] Paso 1/4: verificando acceso al repositorio...");
+
+  try {
+    const repo = await readGithubRepository();
+    result.repoAccessible = true;
+    console.log(
+      `[GitHub Store] Repo accesible: ${repo.full_name} (default_branch=${repo.default_branch}, privado=${repo.private ? "si" : "no"})`
+    );
+  } catch (error: unknown) {
+    logGithubDiagnosticError("repo_access", "No se pudo acceder al repositorio", error);
+    return result;
+  }
+
+  console.log("[GitHub Store] Paso 2/4: leyendo archivo del store...");
+
+  let storeFile: GithubStoreFileReadResult;
+
+  try {
+    storeFile = await readGithubStoreFile();
+    result.readSucceeded = true;
+
+    if (storeFile.sha) {
+      result.fileFound = true;
+      console.log(`[GitHub Store] Archivo encontrado y leido correctamente. sha=${storeFile.sha}`);
+    } else {
+      console.warn("[GitHub Store] Archivo no encontrado. Se intentara crearlo con contenido base.");
+    }
+  } catch (error: unknown) {
+    logGithubDiagnosticError("file_read", "No se pudo leer el archivo del store", error);
+    return result;
+  }
+
+  if (!storeFile.sha) {
+    console.log("[GitHub Store] Paso 3/4: creando archivo base...");
+
+    try {
+      const response = await putGithubStoreFileContent(
+        JSON.stringify(createInitialStore(), null, 2),
+        "chore: bootstrap travelbot alerts store"
+      );
+      result.fileCreated = true;
+      result.writeSucceeded = true;
+      result.ok = true;
+      console.log(
+        `[GitHub Store] Archivo creado correctamente en ${response.content?.path ?? getGithubStoreConfig().path}. sha=${response.content?.sha ?? "unknown"}`
+      );
+      console.log("[GitHub Store] Paso 4/4: diagnostico completado. Lectura y escritura OK.");
+      return result;
+    } catch (error: unknown) {
+      logGithubDiagnosticError("file_create", "No se pudo crear el archivo del store", error);
+      return result;
+    }
+  }
+
+  console.log("[GitHub Store] Paso 3/4: validando escritura con un write probe...");
+
+  try {
+    const response = await putGithubStoreFileContent(
+      storeFile.rawContent ?? JSON.stringify(storeFile.store, null, 2),
+      "chore: github store diagnostic write probe",
+      storeFile.sha
+    );
+    result.writeSucceeded = true;
+    result.ok = true;
+    console.log(
+      `[GitHub Store] Write probe exitoso. commit=${response.commit?.sha ?? "unknown"} sha=${response.content?.sha ?? "unknown"}`
+    );
+    console.log("[GitHub Store] Paso 4/4: diagnostico completado. Repo, lectura y escritura OK.");
+    return result;
+  } catch (error: unknown) {
+    logGithubDiagnosticError("file_write", "No se pudo completar el write probe", error);
+    return result;
+  }
+}
+
 export function getAlertsStoreLabel(): string {
   if (config.storage.provider === "github") {
-    const githubConfig = config.storage.github;
-    return `github://${githubConfig.owner}/${githubConfig.repo}/${githubConfig.path}@${githubConfig.branch}`;
+    return getGithubStoreLabelFromConfig();
   }
 
   return ALERTS_FILE_PATH;

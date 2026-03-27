@@ -79,6 +79,21 @@ TRAVELBOT_DRY_RUN=true npm run dev
 
 En dry-run se consultan vuelos y se evalúan alertas, pero no se envía Telegram y no se persiste estado.
 
+Diagnostico del store GitHub:
+
+```bash
+npm run test:store
+```
+
+Si prefieres lanzarlo desde la entrada normal:
+
+```powershell
+$env:TRAVELBOT_RUN_STORE_DIAGNOSTIC='true'
+npm run dev
+```
+
+El diagnostico verifica acceso al repo, lectura del archivo, creacion inicial si falta, y un write probe para validar permisos de escritura.
+
 ## Endpoint serverless
 
 Ruta:

@@ -1,7 +1,18 @@
 import { config } from "./config";
 import { ChecksRunPersistenceError, runChecksWithSummary } from "./runtime";
+import { testGitHubStoreConnection } from "./store";
 
 async function main() {
+  if (config.diagnostics.runGithubStoreOnStartup) {
+    const result = await testGitHubStoreConnection();
+
+    if (!result.ok) {
+      process.exitCode = 1;
+    }
+
+    return;
+  }
+
   const summary = await runChecksWithSummary();
 
   console.log("Chequeo de alertas de vuelos");
