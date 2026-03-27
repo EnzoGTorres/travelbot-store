@@ -1,23 +1,23 @@
 {
   "searches": [
     {
-      "id": "eze-espana-roundtrip-may-aug-2026",
-      "name": "España ida y vuelta desde EZE (MAD/BCN, mayo-agosto 2026)",
+      "id": "eze-espana-roundtrip-jul-2026",
+      "name": "España ida y vuelta desde EZE (MAD/BCN, julio 2026)",
       "enabled": true,
       "params": {
         "origin": "EZE",
         "destinations": ["MAD", "BCN"],
         "departureDateRange": {
-          "from": "2026-05-01",
-          "to": "2026-08-31",
+          "from": "2026-07-01",
+          "to": "2026-07-31",
           "stepDays": 14,
-          "maxOptions": 8
+          "maxOptions": 3
         },
         "returnDateRange": {
-          "from": "2026-05-10",
-          "to": "2026-09-15",
+          "from": "2026-07-10",
+          "to": "2026-08-20",
           "stepDays": 14,
-          "maxOptions": 8
+          "maxOptions": 3
         },
         "adults": 1,
         "currency": "USD",
@@ -30,17 +30,17 @@
       "alertCooldownHours": 24
     },
     {
-      "id": "eze-espana-oneway-may-aug-2026",
-      "name": "España solo ida desde EZE (MAD/BCN, mayo-agosto 2026)",
-      "enabled": true,
+      "id": "eze-espana-oneway-jul-2026",
+      "name": "España solo ida desde EZE (MAD/BCN, julio 2026)",
+      "enabled": false,
       "params": {
         "origin": "EZE",
         "destinations": ["MAD", "BCN"],
         "departureDateRange": {
-          "from": "2026-05-01",
-          "to": "2026-08-31",
-          "stepDays": 10,
-          "maxOptions": 10
+          "from": "2026-07-01",
+          "to": "2026-07-31",
+          "stepDays": 14,
+          "maxOptions": 3
         },
         "adults": 1,
         "currency": "USD",
@@ -53,18 +53,17 @@
       "alertCooldownHours": 18
     },
     {
-      "id": "eze-espana-returnlike-may-aug-2026",
-      "name": "España -> EZE tramo simple (MAD/BCN, mayo-septiembre 2026)",
-      "enabled": true,
+      "id": "espana-eze-oneway-jul-2026",
+      "name": "España a EZE tramo simple (MAD/BCN, julio 2026)",
+      "enabled": false,
       "params": {
-        "origin": "MAD",
-        "origins": ["BCN"],
+        "origins": ["MAD", "BCN"],
         "destination": "EZE",
         "departureDateRange": {
-          "from": "2026-05-10",
-          "to": "2026-09-15",
-          "stepDays": 10,
-          "maxOptions": 10
+          "from": "2026-07-01",
+          "to": "2026-07-31",
+          "stepDays": 14,
+          "maxOptions": 3
         },
         "adults": 1,
         "currency": "USD",
