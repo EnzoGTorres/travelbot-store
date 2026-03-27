@@ -10,7 +10,8 @@
         "departureDate": "2026-05-10",
         "adults": 1
       },
-      "alertBelowPrice": 700
+      "alertBelowPrice": 1700
+      "alertCooldownHours": 0
     },
     {
       "id": "eze-bcn-jun-2026",
