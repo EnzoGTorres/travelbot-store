@@ -1,0 +1,43 @@
+name: Travelbot Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Ejecutar en dry-run
+        required: false
+        default: "false"
+  schedule:
+    - cron: "0 */6 * * *"
+
+jobs:
+  trigger-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Travelbot check endpoint
+        env:
+          TRAVELBOT_CHECK_URL: ${{ secrets.TRAVELBOT_CHECK_URL }}
+          TRAVELBOT_CHECK_SECRET: ${{ secrets.TRAVELBOT_CHECK_SECRET }}
+          TRAVELBOT_DRY_RUN_INPUT: ${{ github.event.inputs.dry_run }}
+        run: |
+          if [ -z "$TRAVELBOT_CHECK_URL" ] || [ -z "$TRAVELBOT_CHECK_SECRET" ]; then
+            echo "Faltan secrets TRAVELBOT_CHECK_URL o TRAVELBOT_CHECK_SECRET"
+            exit 1
+          fi
+
+          url="$TRAVELBOT_CHECK_URL"
+          if [ "$TRAVELBOT_DRY_RUN_INPUT" = "true" ]; then
+            separator="?"
+            case "$url" in
+              *\?*) separator="&" ;;
+            esac
+            url="${url}${separator}dryRun=true"
+          fi
+
+          response=$(curl --silent --show-error --fail \
+            --request POST \
+            --header "x-travelbot-secret: $TRAVELBOT_CHECK_SECRET" \
+            --header "Content-Type: application/json" \
+            "$url")
+
+          echo "$response"

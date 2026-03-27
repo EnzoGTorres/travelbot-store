@@ -1,0 +1,90 @@
+{
+  "searches": [
+    {
+      "id": "eze-mad-may-2026",
+      "name": "Buenos Aires a Madrid en mayo 2026",
+      "enabled": true,
+      "params": {
+        "origin": "EZE",
+        "destination": "MAD",
+        "departureDate": "2026-05-10",
+        "adults": 1
+      },
+      "alertBelowPrice": 800,
+      "alertCooldownHours": 12
+    },
+    {
+      "id": "eze-mad-bcn-flex-jun-2026",
+      "name": "Buenos Aires a Madrid o Barcelona con fechas flexibles",
+      "enabled": false,
+      "params": {
+        "origin": "EZE",
+        "destinations": ["MAD", "BCN"],
+        "departureDateRange": {
+          "from": "2026-06-10",
+          "to": "2026-06-16",
+          "maxOptions": 4
+        },
+        "returnDateRange": {
+          "from": "2026-06-24",
+          "to": "2026-06-30",
+          "maxOptions": 4
+        },
+        "adults": 1,
+        "currency": "EUR",
+        "language": "es",
+        "market": "ar",
+        "directOnly": true
+      },
+      "minimumDropAmount": 40,
+      "minimumDropPercent": 5,
+      "alertCooldownHours": 24
+    },
+    {
+      "id": "eze-rom-threshold-jul-2026",
+      "name": "Buenos Aires a Roma con baja minima",
+      "enabled": false,
+      "params": {
+        "origin": "EZE",
+        "destination": "FCO",
+        "departureDate": "2026-07-03",
+        "returnDate": "2026-07-20",
+        "adults": 1
+      },
+      "minimumDropAmount": 75,
+      "minimumDropPercent": 8
+    }
+  ],
+  "states": {
+    "eze-mad-may-2026": {
+      "searchId": "eze-mad-may-2026",
+      "lastPrice": 779,
+      "lastCurrency": "USD",
+      "lastCheckedAt": "2026-03-27T12:00:00.000Z",
+      "lastResult": {
+        "price": 779,
+        "currency": "USD",
+        "origin": "EZE",
+        "destination": "MAD",
+        "departureDate": "2026-05-10",
+        "market": "us",
+        "language": "en",
+        "directOnly": false,
+        "metadata": {
+          "checkedCombinationCount": 1,
+          "checkedDestinationCount": 1,
+          "checkedDepartureDateCount": 1,
+          "checkedReturnDateCount": 0,
+          "selectedCombinationLabel": "EZE -> MAD | 2026-05-10",
+          "directOnlyRequested": false,
+          "directOnlyApplied": false,
+          "notes": []
+        }
+      },
+      "lastAlertedPrice": 779,
+      "lastAlertedCurrency": "USD",
+      "lastAlertedAt": "2026-03-27T12:00:00.000Z",
+      "lastAlertType": "below_threshold"
+    }
+  }
+}

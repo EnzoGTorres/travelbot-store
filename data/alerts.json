@@ -1,0 +1,55 @@
+{
+  "searches": [
+    {
+      "id": "eze-mad-may-2026",
+      "name": "Buenos Aires a Madrid en mayo 2026",
+      "enabled": true,
+      "params": {
+        "origin": "EZE",
+        "destination": "MAD",
+        "departureDate": "2026-05-10",
+        "adults": 1
+      },
+      "alertBelowPrice": 700
+    },
+    {
+      "id": "eze-bcn-jun-2026",
+      "name": "Buenos Aires a Barcelona en junio 2026",
+      "enabled": false,
+      "params": {
+        "origin": "EZE",
+        "destination": "BCN",
+        "departureDate": "2026-06-15",
+        "adults": 1
+      }
+    }
+  ],
+  "states": {
+    "eze-mad-may-2026": {
+      "searchId": "eze-mad-may-2026",
+      "lastPrice": 779,
+      "lastCurrency": "USD",
+      "lastCheckedAt": "2026-03-27T06:41:48.983Z",
+      "lastResult": {
+        "price": 779,
+        "currency": "USD",
+        "origin": "EZE",
+        "destination": "MAD",
+        "departureDate": "2026-05-10",
+        "market": "unknown",
+        "language": "unknown",
+        "directOnly": false,
+        "metadata": {
+          "checkedCombinationCount": 1,
+          "checkedDestinationCount": 1,
+          "checkedDepartureDateCount": 1,
+          "checkedReturnDateCount": 0,
+          "selectedCombinationLabel": "EZE -> MAD | 2026-05-10",
+          "directOnlyRequested": false,
+          "directOnlyApplied": false,
+          "notes": []
+        }
+      }
+    }
+  }
+}

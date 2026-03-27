@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/check.ts": {
+      "maxDuration": 60
+    }
+  }
+}
