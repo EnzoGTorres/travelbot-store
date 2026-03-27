@@ -10,7 +10,7 @@
         "departureDate": "2026-05-10",
         "adults": 1
       },
-      "alertBelowPrice": 1700,
+      "alertBelowPrice": 700,
       "alertCooldownHours": 0
     },
     {
