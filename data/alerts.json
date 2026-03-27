@@ -6,7 +6,10 @@
       "enabled": true,
       "params": {
         "origin": "EZE",
-        "destinations": ["MAD", "BCN"],
+        "destinations": [
+          "MAD",
+          "BCN"
+        ],
         "departureDateRange": {
           "from": "2026-07-01",
           "to": "2026-07-31",
@@ -35,7 +38,10 @@
       "enabled": false,
       "params": {
         "origin": "EZE",
-        "destinations": ["MAD", "BCN"],
+        "destinations": [
+          "MAD",
+          "BCN"
+        ],
         "departureDateRange": {
           "from": "2026-07-01",
           "to": "2026-07-31",
@@ -57,7 +63,10 @@
       "name": "España a EZE tramo simple (MAD/BCN, julio 2026)",
       "enabled": false,
       "params": {
-        "origins": ["MAD", "BCN"],
+        "origins": [
+          "MAD",
+          "BCN"
+        ],
         "destination": "EZE",
         "departureDateRange": {
           "from": "2026-07-01",
@@ -76,5 +85,35 @@
       "alertCooldownHours": 18
     }
   ],
-  "states": {}
+  "states": {
+    "eze-espana-roundtrip-jul-2026": {
+      "searchId": "eze-espana-roundtrip-jul-2026",
+      "lastPrice": 1256,
+      "lastCurrency": "USD",
+      "lastCheckedAt": "2026-03-27T23:13:31.455Z",
+      "lastResult": {
+        "price": 1256,
+        "currency": "USD",
+        "origin": "EZE",
+        "destination": "BCN",
+        "departureDate": "2026-07-29",
+        "returnDate": "2026-08-07",
+        "airline": "American",
+        "market": "ar",
+        "language": "es",
+        "directOnly": false,
+        "metadata": {
+          "checkedOriginCount": 1,
+          "checkedCombinationCount": 12,
+          "checkedDestinationCount": 2,
+          "checkedDepartureDateCount": 3,
+          "checkedReturnDateCount": 3,
+          "selectedCombinationLabel": "EZE -> BCN | 2026-07-29 -> 2026-08-07",
+          "directOnlyRequested": false,
+          "directOnlyApplied": false,
+          "notes": []
+        }
+      }
+    }
+  }
 }
