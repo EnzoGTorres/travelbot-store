@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Travelbot Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem 1rem; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #38bdf8; margin-bottom: 0.25rem; }
+    .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 2rem; }
+    .secret-bar { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+    .secret-bar input { flex: 1; background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.5rem 0.75rem; color: #e2e8f0; font-size: 0.9rem; }
+    .secret-bar input:focus { outline: none; border-color: #38bdf8; }
+    button { background: #0ea5e9; color: #fff; border: none; border-radius: 0.5rem; padding: 0.5rem 1.25rem; font-size: 0.9rem; cursor: pointer; }
+    button:hover { background: #38bdf8; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.25rem; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+    .card-name { font-weight: 600; font-size: 1rem; line-height: 1.3; }
+    .badge { font-size: 0.72rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap; }
+    .badge-enabled { background: #14532d; color: #4ade80; }
+    .badge-disabled { background: #3f2020; color: #f87171; }
+    .price-block { background: #0f172a; border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem; }
+    .price-value { font-size: 1.75rem; font-weight: 800; color: #f8fafc; }
+    .price-currency { font-size: 0.85rem; color: #94a3b8; margin-top: 0.2rem; }
+    .price-meta { font-size: 0.8rem; color: #64748b; }
+    .row { display: flex; gap: 0.5rem; margin-bottom: 0.4rem; align-items: center; flex-wrap: wrap; }
+    .label { font-size: 0.75rem; color: #64748b; min-width: 80px; }
+    .value { font-size: 0.85rem; color: #cbd5e1; }
+    .alert-sent { background: #172554; border: 1px solid #1d4ed8; border-radius: 0.5rem; padding: 0.6rem 0.75rem; margin-top: 0.75rem; font-size: 0.8rem; color: #93c5fd; }
+    .no-state { color: #475569; font-style: italic; font-size: 0.85rem; margin-top: 0.5rem; }
+    .error-msg { background: #450a0a; color: #fca5a5; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; font-size: 0.9rem; }
+    .meta-bar { color: #475569; font-size: 0.75rem; margin-top: 2rem; }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #334155; border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .threshold { font-size: 0.78rem; color: #94a3b8; }
+    .below { color: #4ade80 !important; }
+    .above { color: #f87171 !important; }
+  </style>
+</head>
+<body>
+  <h1>✈️ Travelbot Dashboard</h1>
+  <p class="subtitle">Ultimas busquedas de vuelos</p>
+
+  <div class="secret-bar">
+    <input type="password" id="secret" placeholder="Secret (TRAVELBOT_CHECK_SECRET)" />
+    <button onclick="load()">Cargar</button>
+  </div>
+
+  <div id="error" style="display:none" class="error-msg"></div>
+  <div id="content"></div>
+  <div id="meta" class="meta-bar"></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    function fmt(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+      } catch { return dateStr; }
+    }
+
+    function alertTypeBadge(type) {
+      if (!type) return '';
+      const labels = { price_dropped: '📉 Bajo precio', below_threshold: '🎯 Bajo umbral' };
+      return `<span style="color:#fbbf24">${labels[type] ?? type}</span>`;
+    }
+
+    function renderCard(s) {
+      const st = s.state;
+      const belowThreshold = st && s.alertBelowPrice && st.lastPrice <= s.alertBelowPrice;
+      const priceClass = belowThreshold ? 'below' : st && s.alertBelowPrice && st.lastPrice > s.alertBelowPrice ? 'above' : '';
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-name">${s.name}</span>
+            <span class="badge ${s.enabled ? 'badge-enabled' : 'badge-disabled'}">${s.enabled ? 'Activa' : 'Inactiva'}</span>
+          </div>
+          ${st ? `
+            <div class="price-block">
+              <div>
+                <div class="price-value ${priceClass}">$${st.lastPrice.toLocaleString('es-AR')}</div>
+                <div class="price-currency">${st.lastCurrency ?? ''} &nbsp;·&nbsp; ${st.airline ?? ''}</div>
+              </div>
+            </div>
+            <div class="row"><span class="label">Ruta</span><span class="value">${st.origin ?? '—'} → ${st.destination ?? '—'}</span></div>
+            <div class="row"><span class="label">Ida</span><span class="value">${st.departureDate ?? '—'}${st.returnDate ? ` &nbsp; Vuelta: ${st.returnDate}` : ''}</span></div>
+            <div class="row"><span class="label">Chequeado</span><span class="value">${fmt(st.lastCheckedAt)}</span></div>
+            ${s.alertBelowPrice ? `<div class="threshold">Umbral de alerta: $${s.alertBelowPrice.toLocaleString('es-AR')}</div>` : ''}
+            ${st.lastAlertedAt ? `
+              <div class="alert-sent">
+                🔔 Alerta enviada el ${fmt(st.lastAlertedAt)} · $${(st.lastAlertedPrice ?? 0).toLocaleString('es-AR')} ${st.lastAlertedCurrency ?? ''} · ${alertTypeBadge(st.lastAlertType)}
+              </div>
+            ` : ''}
+          ` : `<div class="no-state">Sin datos todavia — pendiente primer chequeo</div>`}
+        </div>
+      `;
+    }
+
+    async function load() {
+      const secret = $('secret').value.trim();
+      $('error').style.display = 'none';
+      $('content').innerHTML = '<span class="spinner"></span>';
+      $('meta').textContent = '';
+
+      try {
+        const url = '/api/status' + (secret ? `?secret=${encodeURIComponent(secret)}` : '');
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.ok) {
+          throw new Error(data.error ?? 'Error desconocido');
+        }
+
+        $('content').innerHTML = `<div class="grid">${data.searches.map(renderCard).join('')}</div>`;
+        $('meta').textContent = `Generado: ${fmt(data.generatedAt)} · ${data.searches.length} busqueda(s)`;
+      } catch (err) {
+        $('error').textContent = err.message;
+        $('error').style.display = 'block';
+        $('content').innerHTML = '';
+      }
+    }
+
+    // Auto-load if secret is saved in sessionStorage
+    const saved = sessionStorage.getItem('tb_secret');
+    if (saved) { $('secret').value = saved; load(); }
+    $('secret').addEventListener('change', () => sessionStorage.setItem('tb_secret', $('secret').value));
+  </script>
+</body>
+</html>

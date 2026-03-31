@@ -38,6 +38,22 @@ function readBooleanEnv(name: string, defaultValue = false): boolean {
   throw new Error(`${name} debe ser un booleano valido.`);
 }
 
+function readPositiveIntegerEnv(name: string, defaultValue: number): number {
+  const value = readOptionalEnv(name);
+
+  if (!value) {
+    return defaultValue;
+  }
+
+  const parsedValue = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    throw new Error(`${name} debe ser un entero positivo.`);
+  }
+
+  return parsedValue;
+}
+
 function readStorageProvider(): "file" | "github" {
   const provider = readOptionalEnv("TRAVELBOT_STORE_PROVIDER") ?? "file";
 
@@ -61,7 +77,8 @@ export const config = {
     getApiKey: () => readOptionalEnv("SERPAPI_API_KEY") ?? readRequiredEnv("SERPAPI_KEY"),
     currency: readOptionalEnv("SERPAPI_CURRENCY") ?? "USD",
     language: readOptionalEnv("SERPAPI_LANGUAGE") ?? "en",
-    market: readOptionalEnv("SERPAPI_MARKET") ?? "us"
+    market: readOptionalEnv("SERPAPI_MARKET") ?? "us",
+    requestTimeoutMs: readPositiveIntegerEnv("SERPAPI_REQUEST_TIMEOUT_MS", 8000)
   },
   checks: {
     secret: readOptionalEnv("TRAVELBOT_CHECK_SECRET"),
@@ -79,6 +96,18 @@ export const config = {
       branch: readOptionalEnv("GITHUB_STORE_BRANCH") ?? "main",
       path: readOptionalEnv("GITHUB_STORE_PATH") ?? "data/alerts.json",
       token: readOptionalEnv("GITHUB_STORE_TOKEN")
+    }
+  },
+  flights: {
+    fetchConcurrency: readPositiveIntegerEnv("TRAVELBOT_FLIGHT_FETCH_CONCURRENCY", 8)
+  },
+  amadeus: {
+    clientId: readOptionalEnv("AMADEUS_CLIENT_ID") ?? "",
+    clientSecret: readOptionalEnv("AMADEUS_CLIENT_SECRET") ?? "",
+    env: (readOptionalEnv("AMADEUS_ENV") ?? "test") as "test" | "production",
+    requestTimeoutMs: readPositiveIntegerEnv("AMADEUS_REQUEST_TIMEOUT_MS", 10000),
+    isConfigured(): boolean {
+      return Boolean(this.clientId && this.clientSecret);
     }
   }
 };

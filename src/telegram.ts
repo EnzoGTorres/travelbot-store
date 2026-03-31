@@ -1,5 +1,5 @@
-import axios from "axios";
 import { config } from "./config";
+import { requestJson } from "./http";
 
 const TELEGRAM_API_BASE_URL = "https://api.telegram.org";
 
@@ -32,8 +32,11 @@ export async function sendTelegramMessage(
   const { botToken, chatId } = getTelegramConfig();
   const url = `${TELEGRAM_API_BASE_URL}/bot${botToken}/sendMessage`;
 
-  await axios.post(url, {
-    chat_id: chatId,
-    text
+  await requestJson(url, {
+    method: "POST",
+    body: {
+      chat_id: chatId,
+      text
+    }
   });
 }
