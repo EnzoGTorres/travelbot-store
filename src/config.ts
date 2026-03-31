@@ -101,13 +101,11 @@ export const config = {
   flights: {
     fetchConcurrency: readPositiveIntegerEnv("TRAVELBOT_FLIGHT_FETCH_CONCURRENCY", 8)
   },
-  amadeus: {
-    clientId: readOptionalEnv("AMADEUS_CLIENT_ID") ?? "",
-    clientSecret: readOptionalEnv("AMADEUS_CLIENT_SECRET") ?? "",
-    env: (readOptionalEnv("AMADEUS_ENV") ?? "test") as "test" | "production",
-    requestTimeoutMs: readPositiveIntegerEnv("AMADEUS_REQUEST_TIMEOUT_MS", 10000),
+  kiwi: {
+    getApiKey: () => readOptionalEnv("KIWI_API_KEY") ?? readRequiredEnv("TEQUILA_API_KEY"),
+    requestTimeoutMs: readPositiveIntegerEnv("KIWI_REQUEST_TIMEOUT_MS", 10000),
     isConfigured(): boolean {
-      return Boolean(this.clientId && this.clientSecret);
+      return Boolean(readOptionalEnv("KIWI_API_KEY") ?? readOptionalEnv("TEQUILA_API_KEY"));
     }
   }
 };
