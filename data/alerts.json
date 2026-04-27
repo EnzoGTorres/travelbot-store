@@ -90,7 +90,7 @@
       "searchId": "eze-espana-roundtrip-jul-2026",
       "lastPrice": 1261,
       "lastCurrency": "USD",
-      "lastCheckedAt": "2026-04-27T02:45:06.284Z",
+      "lastCheckedAt": "2026-04-27T05:54:19.638Z",
       "lastResult": {
         "price": 1261,
         "currency": "USD",
@@ -112,8 +112,7 @@
           "directOnlyRequested": false,
           "directOnlyApplied": false,
           "notes": [
-            "EZE -> MAD | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion.",
-            "EZE -> BCN | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion."
+            "EZE -> MAD | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion."
           ]
         }
       }
