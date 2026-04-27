@@ -88,16 +88,16 @@
   "states": {
     "eze-espana-roundtrip-jul-2026": {
       "searchId": "eze-espana-roundtrip-jul-2026",
-      "lastPrice": 1256,
+      "lastPrice": 1261,
       "lastCurrency": "USD",
-      "lastCheckedAt": "2026-03-29T05:11:37.575Z",
+      "lastCheckedAt": "2026-04-27T02:45:06.284Z",
       "lastResult": {
-        "price": 1256,
+        "price": 1261,
         "currency": "USD",
         "origin": "EZE",
-        "destination": "BCN",
-        "departureDate": "2026-07-29",
-        "returnDate": "2026-08-07",
+        "destination": "MAD",
+        "departureDate": "2026-07-01",
+        "returnDate": "2026-07-10",
         "airline": "American",
         "market": "ar",
         "language": "es",
@@ -108,10 +108,13 @@
           "checkedDestinationCount": 2,
           "checkedDepartureDateCount": 3,
           "checkedReturnDateCount": 3,
-          "selectedCombinationLabel": "EZE -> BCN | 2026-07-29 -> 2026-08-07",
+          "selectedCombinationLabel": "EZE -> MAD | 2026-07-01 -> 2026-07-10",
           "directOnlyRequested": false,
           "directOnlyApplied": false,
-          "notes": []
+          "notes": [
+            "EZE -> MAD | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion.",
+            "EZE -> BCN | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion."
+          ]
         }
       }
     }
