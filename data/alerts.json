@@ -88,11 +88,11 @@
   "states": {
     "eze-espana-roundtrip-jul-2026": {
       "searchId": "eze-espana-roundtrip-jul-2026",
-      "lastPrice": 1261,
+      "lastPrice": 1260,
       "lastCurrency": "USD",
-      "lastCheckedAt": "2026-04-28T16:50:57.460Z",
+      "lastCheckedAt": "2026-04-28T18:17:22.820Z",
       "lastResult": {
-        "price": 1261,
+        "price": 1260,
         "currency": "USD",
         "origin": "EZE",
         "destination": "MAD",
@@ -112,7 +112,7 @@
           "directOnlyRequested": false,
           "directOnlyApplied": false,
           "notes": [
-            "EZE -> MAD | 2026-07-01 -> 2026-08-07: No se pudo consultar vuelos en SerpAPI. Status 500. {\"status\":500,\"error\":\"Internal Server Error\"}",
+            "EZE -> MAD | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion.",
             "EZE -> BCN | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion."
           ]
         }
