@@ -90,7 +90,7 @@
       "searchId": "eze-espana-roundtrip-jul-2026",
       "lastPrice": 1261,
       "lastCurrency": "USD",
-      "lastCheckedAt": "2026-04-28T11:44:39.553Z",
+      "lastCheckedAt": "2026-04-28T16:50:57.460Z",
       "lastResult": {
         "price": 1261,
         "currency": "USD",
@@ -112,9 +112,7 @@
           "directOnlyRequested": false,
           "directOnlyApplied": false,
           "notes": [
-            "EZE -> BCN | 2026-07-01 -> 2026-07-24: No se pudo consultar vuelos en SerpAPI. Status 500. {\"status\":500,\"error\":\"Internal Server Error\"}",
-            "EZE -> BCN | 2026-07-15 -> 2026-07-24: No se pudo consultar vuelos en SerpAPI. Status 500. {\"status\":500,\"error\":\"Internal Server Error\"}",
-            "EZE -> MAD | 2026-07-01 -> 2026-08-07: No se pudo consultar vuelos en SerpAPI. Status 503. {\"search_metadata\":{\"id\":\"69f09d9fd45a383ee89ca20c\",\"status\":\"Error\",\"json_endpoint\":\"https://serpapi.com/searches/zss094qgrgQal7XtdMFdgA/69f09d9fd45a383ee89ca20c.json\",\"created_at\":\"2026-04-28 11:44:31 UTC\",\"processed_at\":\"2026-04-28 11:44:31 UTC\",\"google_flights_url\":\"https://www.google.com/travel/flights?hl=es&gl=ar&curr=USD&tfs=CBwQAhoeEgoyMDI2LTA3LTAxagcIARIDRVpFcgcIARIDTUFEGh4SCjIwMjYtMDgtMDdqBwgBEgNNQURyBwgBEgNFWkVAAUgBcAGYAQE&tfu=EgIIAQ\",\"prettify_html_file\":\"https://serpapi.com/searches/zss094qgrgQal7XtdMFdgA/69f09d9fd45a383ee89ca20c.prettify\",\"total_time_taken\":5.1},\"search_parameters\":{\"engine\":\"google_flights\",\"hl\":\"es\",\"gl\":\"ar\",\"type\":\"1\",\"departure_id\":\"EZE\",\"arrival_id\":\"MAD\",\"outbound_date\":\"2026-07-01\",\"return_date\":\"2026-08-07\",\"adults\":1,\"currency\":\"USD\"},\"error\":\"Internal SerpApi error, please contact support.\"}",
+            "EZE -> MAD | 2026-07-01 -> 2026-08-07: No se pudo consultar vuelos en SerpAPI. Status 500. {\"status\":500,\"error\":\"Internal Server Error\"}",
             "EZE -> BCN | 2026-07-01 -> 2026-08-07: SerpAPI excedio el timeout de 8000ms para esta combinacion."
           ]
         }
